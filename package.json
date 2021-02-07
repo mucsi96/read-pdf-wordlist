@@ -6,8 +6,8 @@
   "author": "Igor Bari <mucsi96@gmail.com>",
   "license": "MIT",
   "scripts": {
-    "start:a1": "ts-node src A1_SD1_Wortliste_02.pdf",
-    "start:a2": "ts-node src Goethe-Zertifikat_A2_Wortliste.pdf"
+    "start:a1": "ts-node src A1_SD1_Wortliste_02.json",
+    "start:a2": "ts-node src Goethe-Zertifikat_A2_Wortliste.json"
   },
   "devDependencies": {
     "@tsconfig/node12": "^1.0.7",

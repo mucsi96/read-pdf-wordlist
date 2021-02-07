@@ -1,5 +1,4 @@
-import { appendFileSync, readFileSync, writeFileSync } from "fs";
-import { EOL } from "os";
+import { readFileSync, writeFileSync } from "fs";
 import { resolve } from "path";
 import { getDocument } from "pdfjs-dist";
 import { TextContent, TextItem } from "pdfjs-dist/types/display/api";
@@ -12,9 +11,10 @@ type Column = {
 
 type Config = {
   source: string;
+  file: string;
+  startPage: number;
   font: string;
   columns: Column[];
-  groupWordLimit: number;
   markLineIfMatchIn?: string;
 };
 
@@ -27,29 +27,36 @@ type Word = {
   word: string;
   wordForms: string[];
   examples: string[];
+  match?: boolean;
 };
 
-const input = resolve(__dirname, "..", process.argv[2]);
-const output = input.replace(/pdf$/, "txt");
-const config = require(input.replace(/pdf$/, "json")) as Config;
-const compareFile =
+const config = require(resolve(__dirname, "..", process.argv[2])) as Config;
+const output = config.file.replace(/pdf$/, "yaml");
+const matchFile =
   config.markLineIfMatchIn &&
-  readFileSync(resolve(__dirname, "..", config.markLineIfMatchIn));
+  (yaml.parse(
+    readFileSync(resolve(__dirname, "..", config.markLineIfMatchIn), "utf-8")
+  ) as Word[]);
 
 async function main() {
-  const document = await getDocument(input).promise;
-  const pages = Array(document.numPages)
+  const document = await getDocument(config.file).promise;
+  const pages = Array(document.numPages - (config.startPage - 1))
     .fill("")
-    .map((_element, index) => index + 1);
+    .map((_element, index) => index + config.startPage);
 
-  writeFileSync(output, "");
+  let words: Word[] = [];
 
   for (const page of pages) {
-    processContent(await (await document.getPage(page)).getTextContent());
+    words = [
+      ...words,
+      ...processContent(await (await document.getPage(page)).getTextContent()),
+    ];
   }
+
+  writeFileSync(output, yaml.stringify(words), "utf-8");
 }
 
-function processContent(content: TextContent) {
+function processContent(content: TextContent): Word[] {
   const items = content.items.filter((item) => item.fontName === config.font);
 
   const sortedItems = items
@@ -66,9 +73,22 @@ function processContent(content: TextContent) {
 
       return acc;
     }, [] as TextItem[][])
+    .map((items) => {
+      return items.reduce((acc, item) => {
+        const line = acc.find((i) => i.transform[5] === item.transform[5]);
+
+        if (!line) {
+          return [...acc, item];
+        }
+
+        line.str = `${line.str.trim()}   ${item.str.trim()}`;
+
+        return acc;
+      }, [] as TextItem[]);
+    })
     .map((items) => items.sort((a, b) => b.transform[5] - a.transform[5]));
 
-  sortedItems
+  return sortedItems
     .flatMap((items) => items)
     .reduce((acc, item) => {
       const [wordPart = "", examplePart = ""] = item.str.split(/\s{3,}/);
@@ -105,14 +125,15 @@ function processContent(content: TextContent) {
         .split("@@@")
         .map((item) => item.trim())
         .filter(Boolean);
+      const match = matchFile
+        ? matchFile.findIndex((item) => item.word === word) !== -1
+        : false;
       return {
         word,
+        ...(match ? { match } : {}),
         ...(wordForms.length ? { wordForms } : {}),
         ...(examples.length ? { examples } : {}),
       } as Word;
-    })
-    .forEach((word) => {
-      appendFileSync(output, `${yaml.stringify(word)}${EOL}`);
     });
 }
 

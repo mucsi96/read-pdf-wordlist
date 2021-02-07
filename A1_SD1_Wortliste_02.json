@@ -1,11 +1,12 @@
 {
   "source": "https://www.goethe.de/pro/relaunch/prf/de/A1_SD1_Wortliste_02.pdf",
-  "font": "g_d0_f2",
+  "file": "A1_SD1_Wortliste_02.pdf",
+  "startPage": 9,
+  "font": "g_d0_f1",
   "columns": [
     {
-      "from": 230,
+      "from": 140,
       "to": 240
     }
-  ],
-  "groupWordLimit": 14
+  ]
 }

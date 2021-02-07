@@ -1,5 +1,7 @@
 {
   "source": "https://www.goethe.de/pro/relaunch/prf/de/Goethe-Zertifikat_A2_Wortliste.pdf",
+  "file": "Goethe-Zertifikat_A2_Wortliste.pdf",
+  "startPage": 8,
   "font": "g_d0_f2",
   "columns": [
     {
@@ -11,6 +13,5 @@
       "to": 310
     }
   ],
-  "groupWordLimit": 14,
-  "markLineIfMatchIn": "A1_SD1_Wortliste_02.txt"
+  "markLineIfMatchIn": "A1_SD1_Wortliste_02.yaml"
 }
