@@ -19,6 +19,7 @@
     "@types/promise.allsettled": "^1.0.3",
     "pdfjs-dist": "^2.6.347",
     "promise.allsettled": "^1.0.4",
-    "web-streams-polyfill": "^3.0.1"
+    "web-streams-polyfill": "^3.0.1",
+    "yaml": "^1.10.0"
   }
 }

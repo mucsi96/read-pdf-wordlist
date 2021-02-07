@@ -3,6 +3,7 @@ import { EOL } from "os";
 import { resolve } from "path";
 import { getDocument } from "pdfjs-dist";
 import { TextContent, TextItem } from "pdfjs-dist/types/display/api";
+import yaml from "yaml";
 
 type Column = {
   from: number;
@@ -15,6 +16,17 @@ type Config = {
   columns: Column[];
   groupWordLimit: number;
   markLineIfMatchIn?: string;
+};
+
+type WordParts = {
+  wordPart: string;
+  examplePart: string;
+};
+
+type Word = {
+  word: string;
+  wordForms: string[];
+  examples: string[];
 };
 
 const input = resolve(__dirname, "..", process.argv[2]);
@@ -57,29 +69,50 @@ function processContent(content: TextContent) {
     .map((items) => items.sort((a, b) => b.transform[5] - a.transform[5]));
 
   sortedItems
-    .map((items) =>
-      items.reduce((acc, item, index) => {
-        const isNewWord =
-          index === 0 ||
-          items[index - 1].transform[5] - item.transform[5] >
-            config.groupWordLimit ||
-          (!items[index - 1].str.includes("   ") && item.str.includes("    "));
-
-        return [
-          ...acc,
-          ...(isNewWord ? [{ str: "" } as TextItem, item] : [item]),
-        ];
-      }, [] as TextItem[])
-    )
     .flatMap((items) => items)
-    .map((item) => {
-      const example = item.str.includes("    ") && item.str.split(/\s{4,}/)[1];
-      const matchFound =
-        example && compareFile && compareFile.includes(example);
-      appendFileSync(
-        output,
-        `${matchFound ? ">>>>>>>>>>>>>> " : ""}${item.str}${EOL}`
-      );
+    .reduce((acc, item) => {
+      const [wordPart = "", examplePart = ""] = item.str.split(/\s{3,}/);
+      const prevWord = acc[acc.length - 1];
+      const continuePrevWord =
+        prevWord &&
+        (prevWord.wordPart.match(/,$/) ||
+          !prevWord.examplePart.match(/[.!?]$/) ||
+          !wordPart ||
+          !examplePart);
+
+      if (continuePrevWord) {
+        prevWord.wordPart += wordPart.trim();
+        prevWord.examplePart += examplePart.trim();
+
+        return acc;
+      }
+
+      return [
+        ...acc,
+        {
+          wordPart: wordPart.trim(),
+          examplePart: examplePart.trim(),
+        },
+      ];
+    }, [] as WordParts[])
+    .map(({ wordPart, examplePart }) => {
+      const [word, ...wordForms] = wordPart
+        .split(",")
+        .map((item) => item.trim())
+        .filter(Boolean);
+      const examples = examplePart
+        .replace(/[.!?]/g, "$&@@@")
+        .split("@@@")
+        .map((item) => item.trim())
+        .filter(Boolean);
+      return {
+        word,
+        ...(wordForms.length ? { wordForms } : {}),
+        ...(examples.length ? { examples } : {}),
+      } as Word;
+    })
+    .forEach((word) => {
+      appendFileSync(output, `${yaml.stringify(word)}${EOL}`);
     });
 }
 
